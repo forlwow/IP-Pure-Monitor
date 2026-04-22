@@ -3,7 +3,7 @@
 // @name:zh-CN   IP纯净度实时监测
 // @name:en      IP Pure Monitor
 // @namespace    http://tampermonkey.net/
-// @version      1.3.1
+// @version      1.4.0
 // @description  IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
 // @description:zh-CN IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
 // @description:en A Tampermonkey userscript for real-time IP purity and fraud score monitoring.
@@ -66,22 +66,18 @@
             cursor: move !important;
             font-size: 12px !important;
             color: #ddd !important;
-            flex-shrink: 0 !important; /* 防止标题栏被挤压 */
+            flex-shrink: 0 !important;
         }
         .content {
             padding: 10px 15px !important;
             cursor: pointer;
             display: ${isMinimized ? 'none' : 'block'} !important;
             box-sizing: border-box !important;
-
-            
             resize: both;
             overflow: auto;
             min-width: 180px;
             min-height: 95px;
         }
-
-        
         .content::-webkit-scrollbar {
             width: 8px;
             height: 8px;
@@ -93,7 +89,6 @@
         .content::-webkit-scrollbar-corner {
             background: transparent;
         }
-
         .content::-webkit-resizer {
             background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12"><path d="M12 0L0 12h12V0z" fill="rgba(255,255,255,0.6)"/></svg>');
             background-repeat: no-repeat;
@@ -101,7 +96,6 @@
         }
     `;
     shadow.appendChild(style);
-
 
     const monitorDiv = document.createElement('div');
     monitorDiv.id = 'ip-pure-monitor';
@@ -130,11 +124,22 @@
     monitorDiv.appendChild(contentDiv);
     shadow.appendChild(monitorDiv);
 
-
     function updateUI(data, isError = false) {
+        contentDiv.replaceChildren(); // 清空 contentDiv
+
         if (isError) {
             monitorDiv.style.borderLeft = "4px solid #ff4444";
-            contentDiv.innerHTML = `<div>❌ 检测失败</div><div style="font-size:11px;color:#aaa;">点击此处重试</div>`;
+            
+            const errTitle = document.createElement('div');
+            errTitle.textContent = '❌ 检测失败';
+            
+            const errDesc = document.createElement('div');
+            errDesc.style.fontSize = '11px';
+            errDesc.style.color = '#aaa';
+            errDesc.textContent = '点击此处重试';
+            
+            contentDiv.appendChild(errTitle);
+            contentDiv.appendChild(errDesc);
             return;
         }
 
@@ -153,26 +158,62 @@
         monitorDiv.style.borderLeft = `4px solid ${statusColor}`;
 
         if (isMinimized) {
-            titleSpan.innerHTML = `<span style="color:${statusColor}">●</span> ${data.ip} (${score})`;
+            titleSpan.replaceChildren(); // 清空 titleSpan
+            
+            const dotSpan = document.createElement('span');
+            dotSpan.style.color = statusColor;
+            dotSpan.textContent = '● ';
+            
+            titleSpan.appendChild(dotSpan);
+            titleSpan.appendChild(document.createTextNode(`${data.ip} (${score})`));
         } else {
             titleSpan.innerText = '🛡️ IP 监测';
         }
 
-        contentDiv.innerHTML = `
-            <div style="font-weight: bold; margin-bottom: 4px;">
-                <span style="color: ${statusColor};">●</span> IP: ${data.ip}
-            </div>
-            <div style="color: #ddd;">
-                ${data.countryCode} - ${data.city} | 分数: <span style="color:${statusColor};font-weight:bold;">${score}</span> (${statusText})
-            </div>
-            <div style="font-size: 11px; color: #aaa; margin-top: 4px;">
-                ${data.isResidential ? '🏠 住宅' : '🏢 机房'} | ${data.asOrganization || '未知ISP'}
-            </div>
-        `;
+        // 构建第一行：IP地址
+        const line1 = document.createElement('div');
+        line1.style.fontWeight = 'bold';
+        line1.style.marginBottom = '4px';
+        
+        const dotSpan2 = document.createElement('span');
+        dotSpan2.style.color = statusColor;
+        dotSpan2.textContent = '● ';
+        
+        line1.appendChild(dotSpan2);
+        line1.appendChild(document.createTextNode(`IP: ${data.ip}`));
+
+        // 构建第二行：地区与分数
+        const line2 = document.createElement('div');
+        line2.style.color = '#ddd';
+        line2.appendChild(document.createTextNode(`${data.countryCode} - ${data.city} | 分数: `));
+        
+        const scoreSpan = document.createElement('span');
+        scoreSpan.style.color = statusColor;
+        scoreSpan.style.fontWeight = 'bold';
+        scoreSpan.textContent = score;
+        
+        line2.appendChild(scoreSpan);
+        line2.appendChild(document.createTextNode(` (${statusText})`));
+
+        // 构建第三行：网络类型与ISP
+        const line3 = document.createElement('div');
+        line3.style.fontSize = '11px';
+        line3.style.color = '#aaa';
+        line3.style.marginTop = '4px';
+        line3.textContent = `${data.isResidential ? '🏠 住宅' : '🏢 机房'} | ${data.asOrganization || '未知ISP'}`;
+
+        contentDiv.appendChild(line1);
+        contentDiv.appendChild(line2);
+        contentDiv.appendChild(line3);
     }
 
     function fetchIPInfo() {
-        contentDiv.innerHTML = `<div style="color:#aaa;">🔄 检测中...</div>`;
+        contentDiv.replaceChildren(); // 清空并显示加载状态
+        const loadingDiv = document.createElement('div');
+        loadingDiv.style.color = '#aaa';
+        loadingDiv.textContent = '🔄 检测中...';
+        contentDiv.appendChild(loadingDiv);
+
         GM_xmlhttpRequest({
             method: "GET",
             url: API_URL,
@@ -192,7 +233,6 @@
             ontimeout: () => updateUI(null, true)
         });
     }
-
 
     minBtn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -264,13 +304,11 @@
         }
     }, true);
 
-
     let resizeTimeout;
     const resizeObserver = new ResizeObserver(() => {
         if (isMinimized) return; 
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
-
             if (contentDiv.style.width) GM_setValue('ip_monitor_width', contentDiv.style.width);
             if (contentDiv.style.height) GM_setValue('ip_monitor_height', contentDiv.style.height);
         }, 300); 
