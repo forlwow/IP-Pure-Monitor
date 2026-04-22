@@ -3,7 +3,7 @@
 // @name:zh-CN   IP纯净度实时监测
 // @name:en      IP Pure Monitor
 // @namespace    http://tampermonkey.net/
-// @version      1.4.0
+// @version      1.4.1
 // @description  IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
 // @description:zh-CN IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
 // @description:en A Tampermonkey userscript for real-time IP purity and fraud score monitoring.
@@ -97,6 +97,20 @@
     `;
     shadow.appendChild(style);
 
+    // anti dark reader
+    const preventDarkReaderObserver = new MutationObserver((mutations) => {
+        for (const mutation of mutations) {
+            for (const node of mutation.addedNodes) {
+                
+                if (node.tagName === 'STYLE' && node !== style) {
+                    node.remove();
+                }
+            }
+        }
+    });
+
+    preventDarkReaderObserver.observe(shadow, { childList: true });
+
     const monitorDiv = document.createElement('div');
     monitorDiv.id = 'ip-pure-monitor';
 
@@ -125,7 +139,7 @@
     shadow.appendChild(monitorDiv);
 
     function updateUI(data, isError = false) {
-        contentDiv.replaceChildren(); // 清空 contentDiv
+        contentDiv.replaceChildren(); 
 
         if (isError) {
             monitorDiv.style.borderLeft = "4px solid #ff4444";
@@ -170,7 +184,6 @@
             titleSpan.innerText = '🛡️ IP 监测';
         }
 
-        // 构建第一行：IP地址
         const line1 = document.createElement('div');
         line1.style.fontWeight = 'bold';
         line1.style.marginBottom = '4px';
@@ -182,7 +195,6 @@
         line1.appendChild(dotSpan2);
         line1.appendChild(document.createTextNode(`IP: ${data.ip}`));
 
-        // 构建第二行：地区与分数
         const line2 = document.createElement('div');
         line2.style.color = '#ddd';
         line2.appendChild(document.createTextNode(`${data.countryCode} - ${data.city} | 分数: `));
@@ -195,7 +207,6 @@
         line2.appendChild(scoreSpan);
         line2.appendChild(document.createTextNode(` (${statusText})`));
 
-        // 构建第三行：网络类型与ISP
         const line3 = document.createElement('div');
         line3.style.fontSize = '11px';
         line3.style.color = '#aaa';
