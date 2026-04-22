@@ -14,8 +14,6 @@
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @connect      my.ippure.com
-// @downloadURL https://update.greasyfork.org/scripts/574961/IP%E7%BA%AF%E5%87%80%E5%BA%A6%E5%AE%9E%E6%97%B6%E7%9B%91%E6%B5%8B.user.js
-// @updateURL https://update.greasyfork.org/scripts/574961/IP%E7%BA%AF%E5%87%80%E5%BA%A6%E5%AE%9E%E6%97%B6%E7%9B%91%E6%B5%8B.meta.js
 // ==/UserScript==
 
 (function() {
