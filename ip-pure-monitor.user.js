@@ -1,13 +1,21 @@
 // ==UserScript==
 // @name         IP纯净度实时监测
+// @name:zh-CN   IP纯净度实时监测
+// @name:en      IP Pure Monitor
 // @namespace    http://tampermonkey.net/
-// @version      1.3
-// @author       Gemini
+// @version      1.3.1
+// @description  IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
+// @description:zh-CN IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
+// @description:en A Tampermonkey userscript for real-time IP purity and fraud score monitoring.
+// @author       lwow
+// @license      MIT
 // @match        *://*/*
 // @grant        GM_xmlhttpRequest
 // @grant        GM_getValue
 // @grant        GM_setValue
 // @connect      my.ippure.com
+// @downloadURL https://update.greasyfork.org/scripts/574961/IP%E7%BA%AF%E5%87%80%E5%BA%A6%E5%AE%9E%E6%97%B6%E7%9B%91%E6%B5%8B.user.js
+// @updateURL https://update.greasyfork.org/scripts/574961/IP%E7%BA%AF%E5%87%80%E5%BA%A6%E5%AE%9E%E6%97%B6%E7%9B%91%E6%B5%8B.meta.js
 // ==/UserScript==
 
 (function() {
@@ -49,7 +57,7 @@
             z-index: 2147483647;
             display: flex !important;
             flex-direction: column !important;
-            overflow: hidden !important; /* 隐藏外层溢出，保持圆角 */
+            overflow: hidden !important; 
         }
         .header {
             display: flex !important;
@@ -68,14 +76,14 @@
             display: ${isMinimized ? 'none' : 'block'} !important;
             box-sizing: border-box !important;
 
-            /* ===== 核心缩放属性 ===== */
+            
             resize: both;
             overflow: auto;
             min-width: 180px;
             min-height: 95px;
         }
 
-        /* 滚动条与拉伸图标的美化 */
+        
         .content::-webkit-scrollbar {
             width: 8px;
             height: 8px;
