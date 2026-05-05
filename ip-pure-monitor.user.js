@@ -3,9 +3,9 @@
 // @name:zh-CN   IP纯净度实时监测
 // @name:en      IP Pure Monitor
 // @namespace    http://tampermonkey.net/
-// @version      1.4.1
-// @description  IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
-// @description:zh-CN IP纯净度实时监测，支持自由拖拽、折叠、右下角手动缩放窗口大小，并记忆所有状态。
+// @version      1.5.0
+// @description  IP纯净度实时监测
+// @description:zh-CN IP纯净度实时监测
 // @description:en A Tampermonkey userscript for real-time IP purity and fraud score monitoring.
 // @author       lwow
 // @license      MIT
@@ -51,11 +51,14 @@
             user-select: none !important;
             border: 1px solid rgba(255,255,255,0.1) !important;
             pointer-events: auto;
-            min-width: 160px;
+            min-width: fit-content;
+            /* 关键修复：禁止浏览器在 fit-content 状态下自作主张放大字体 */
+            -webkit-text-size-adjust: 100% !important;
+            text-size-adjust: 100% !important;
             z-index: 2147483647;
             display: flex !important;
             flex-direction: column !important;
-            overflow: hidden !important; 
+            overflow: hidden !important;
         }
         .header {
             display: flex !important;
@@ -67,6 +70,7 @@
             font-size: 12px !important;
             color: #ddd !important;
             flex-shrink: 0 !important;
+            white-space: nowrap !important;
         }
         .content {
             padding: 10px 15px !important;
@@ -97,11 +101,9 @@
     `;
     shadow.appendChild(style);
 
-    // anti dark reader
     const preventDarkReaderObserver = new MutationObserver((mutations) => {
         for (const mutation of mutations) {
             for (const node of mutation.addedNodes) {
-                
                 if (node.tagName === 'STYLE' && node !== style) {
                     node.remove();
                 }
@@ -139,19 +141,19 @@
     shadow.appendChild(monitorDiv);
 
     function updateUI(data, isError = false) {
-        contentDiv.replaceChildren(); 
+        contentDiv.replaceChildren();
 
         if (isError) {
             monitorDiv.style.borderLeft = "4px solid #ff4444";
-            
+
             const errTitle = document.createElement('div');
             errTitle.textContent = '❌ 检测失败';
-            
+
             const errDesc = document.createElement('div');
             errDesc.style.fontSize = '11px';
             errDesc.style.color = '#aaa';
             errDesc.textContent = '点击此处重试';
-            
+
             contentDiv.appendChild(errTitle);
             contentDiv.appendChild(errDesc);
             return;
@@ -172,14 +174,15 @@
         monitorDiv.style.borderLeft = `4px solid ${statusColor}`;
 
         if (isMinimized) {
-            titleSpan.replaceChildren(); // 清空 titleSpan
-            
+            titleSpan.replaceChildren();
+
             const dotSpan = document.createElement('span');
             dotSpan.style.color = statusColor;
             dotSpan.textContent = '● ';
-            
             titleSpan.appendChild(dotSpan);
-            titleSpan.appendChild(document.createTextNode(`${data.ip} (${score})`));
+
+            const code = data.countryCode || '未知';
+            titleSpan.appendChild(document.createTextNode(`${code}(${score})`));
         } else {
             titleSpan.innerText = '🛡️ IP 监测';
         }
@@ -187,23 +190,23 @@
         const line1 = document.createElement('div');
         line1.style.fontWeight = 'bold';
         line1.style.marginBottom = '4px';
-        
+
         const dotSpan2 = document.createElement('span');
         dotSpan2.style.color = statusColor;
         dotSpan2.textContent = '● ';
-        
+
         line1.appendChild(dotSpan2);
         line1.appendChild(document.createTextNode(`IP: ${data.ip}`));
 
         const line2 = document.createElement('div');
         line2.style.color = '#ddd';
         line2.appendChild(document.createTextNode(`${data.countryCode} - ${data.city} | 分数: `));
-        
+
         const scoreSpan = document.createElement('span');
         scoreSpan.style.color = statusColor;
         scoreSpan.style.fontWeight = 'bold';
         scoreSpan.textContent = score;
-        
+
         line2.appendChild(scoreSpan);
         line2.appendChild(document.createTextNode(` (${statusText})`));
 
@@ -219,7 +222,7 @@
     }
 
     function fetchIPInfo() {
-        contentDiv.replaceChildren(); // 清空并显示加载状态
+        contentDiv.replaceChildren();
         const loadingDiv = document.createElement('div');
         loadingDiv.style.color = '#aaa';
         loadingDiv.textContent = '🔄 检测中...';
@@ -254,8 +257,8 @@
             contentDiv.style.setProperty('display', 'none', 'important');
             minBtn.innerText = '[+]';
             try {
-                const cachedData = JSON.parse(GM_getValue('ip_cache_data'));
-                if(cachedData) updateUI(cachedData);
+                const cachedDataStr = GM_getValue('ip_cache_data');
+                if(cachedDataStr) updateUI(JSON.parse(cachedDataStr));
             } catch(e) {}
         } else {
             contentDiv.style.setProperty('display', 'block', 'important');
@@ -266,7 +269,6 @@
 
     contentDiv.addEventListener('click', (e) => {
         const rect = contentDiv.getBoundingClientRect();
-
         const isClickOnResizer = (e.clientX > rect.right - 15) && (e.clientY > rect.bottom - 15);
         if (!isClickOnResizer) {
             fetchIPInfo();
@@ -310,19 +312,53 @@
             isDragging = false;
             e.stopPropagation();
             monitorDiv.style.transition = 'all 0.3s ease';
-            GM_setValue('ip_monitor_left', monitorDiv.style.left);
-            GM_setValue('ip_monitor_top', monitorDiv.style.top);
+
+            const rect = monitorDiv.getBoundingClientRect();
+
+            const leftVW = ((rect.left / window.innerWidth) * 100).toFixed(2) + 'vw';
+            const topVH = ((rect.top / window.innerHeight) * 100).toFixed(2) + 'vh';
+
+            monitorDiv.style.left = leftVW;
+            monitorDiv.style.top = topVH;
+
+            GM_setValue('ip_monitor_left', leftVW);
+            GM_setValue('ip_monitor_top', topVH);
         }
     }, true);
 
+    window.addEventListener('resize', () => {
+        const rect = monitorDiv.getBoundingClientRect();
+        let needsAdjustment = false;
+        let newLeft = rect.left;
+        let newTop = rect.top;
+
+        if (rect.right > window.innerWidth) {
+            newLeft = Math.max(0, window.innerWidth - rect.width);
+            needsAdjustment = true;
+        }
+        if (rect.bottom > window.innerHeight) {
+            newTop = Math.max(0, window.innerHeight - rect.height);
+            needsAdjustment = true;
+        }
+
+        if (needsAdjustment) {
+            const leftVW = ((newLeft / window.innerWidth) * 100).toFixed(2) + 'vw';
+            const topVH = ((newTop / window.innerHeight) * 100).toFixed(2) + 'vh';
+            monitorDiv.style.left = leftVW;
+            monitorDiv.style.top = topVH;
+            GM_setValue('ip_monitor_left', leftVW);
+            GM_setValue('ip_monitor_top', topVH);
+        }
+    });
+
     let resizeTimeout;
     const resizeObserver = new ResizeObserver(() => {
-        if (isMinimized) return; 
+        if (isMinimized) return;
         clearTimeout(resizeTimeout);
         resizeTimeout = setTimeout(() => {
             if (contentDiv.style.width) GM_setValue('ip_monitor_width', contentDiv.style.width);
             if (contentDiv.style.height) GM_setValue('ip_monitor_height', contentDiv.style.height);
-        }, 300); 
+        }, 300);
     });
     resizeObserver.observe(contentDiv);
 
